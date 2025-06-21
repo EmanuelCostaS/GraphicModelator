@@ -5,22 +5,10 @@ from camera.camera import configure_projection_matrix, Camera
 
 from transformations import scaling_matrix_4x4, translation_matrix_4x4, rotation_matrix_4x4
 
-def init_opengl(width, height):
-    # Configurações básicas da OpenGL
-    glClearColor(0.0, 0.0, 0.0, 0.0) # Cor de fundo preta
-    glClearDepth(1.0) # Valor padrão do z-buffer
-    glEnable(GL_DEPTH_TEST) # Habilita o teste de profundidade (Z-buffer para visibilidade)
-    glDepthFunc(GL_LESS) # Testa se o novo pixel está mais próximo que o anterior
-    glShadeModel(GL_SMOOTH) # Habilita o sombreamento suave (Gouraud por padrão na OpenGL fixa)
-
-    configure_projection_matrix(width, height, False) # Configura a matriz de projeção
 
 
-    # 4. Aplique sua matriz. A transposição (.T) é vital para alinhar o formato
-    #    do NumPy com o formato interno do OpenGL.
-
-
-    # --- Configuração de Iluminação (Modelo de Phong) ---
+def configure_light():
+        # --- Configuração de Iluminação (Modelo de Phong) ---
     glEnable(GL_LIGHTING) # Habilita o sistema de iluminação
     glEnable(GL_LIGHT0) # Ativa a primeira fonte de luz (LIGHT0)
 
@@ -43,6 +31,24 @@ def init_opengl(width, height):
     glMaterialfv(GL_FRONT, GL_DIFFUSE, [0.7, 0.7, 0.7, 1.0])
     glMaterialfv(GL_FRONT, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0])
     glMaterialf(GL_FRONT, GL_SHININESS, 50.0) # Nível de brilho especular (0-128)
+
+
+def init_opengl(width, height):
+    # Configurações básicas da OpenGL
+    glClearColor(0.0, 0.0, 0.0, 0.0) # Cor de fundo preta
+    glClearDepth(1.0) # Valor padrão do z-buffer
+    glEnable(GL_DEPTH_TEST) # Habilita o teste de profundidade (Z-buffer para visibilidade)
+    glDepthFunc(GL_LESS) # Testa se o novo pixel está mais próximo que o anterior
+    glShadeModel(GL_SMOOTH) # Habilita o sombreamento suave (Gouraud por padrão na OpenGL fixa)
+
+    configure_projection_matrix(width, height, False) # Configura a matriz de projeção
+
+
+    # 4. Aplique sua matriz. A transposição (.T) é vital para alinhar o formato
+    #    do NumPy com o formato interno do OpenGL.
+
+
+    configure_light()
 
 
 def draw_object():
@@ -68,8 +74,14 @@ def draw_object():
     # ]
     # glMultMatrixf(rotation_matrix_y) # Multiplica a matriz atual pela sua matriz
 
+    cor_vermelha_difusa = [0.8, 0.0, 0.0, 1.0] # Material vermelho
+    cor_cinza_difusa = [0.7, 0.7, 0.7, 1.0]   # Material cinza padrão
+
     # Desenha um cubo simples
     glBegin(GL_QUADS) # Inicia o desenho de quads (faces de 4 vértices)
+
+
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, cor_vermelha_difusa)
     # Frente
     glNormal3f(0.0, 0.0, 1.0) # Normal da superfície (aponta para fora) - importante para iluminação
     glVertex3f(-1.0, -1.0, 1.0)
@@ -91,6 +103,7 @@ def draw_object():
     glVertex3f(1.0, 1.0, 1.0)
     glVertex3f(1.0, 1.0, -1.0)
 
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, cor_cinza_difusa)
     # Base
     glNormal3f(0.0, -1.0, 0.0)
     glVertex3f(-1.0, -1.0, -1.0)
