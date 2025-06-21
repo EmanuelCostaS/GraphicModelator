@@ -3,6 +3,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from camera.camera import configure_projection_matrix, Camera
 
+from transformations import scaling_matrix_4x4, translation_matrix_4x4, rotation_matrix_4x4
 
 def init_opengl(width, height):
     # Configurações básicas da OpenGL
@@ -47,7 +48,12 @@ def init_opengl(width, height):
 def draw_object():
     
 
-    glRotatef(pygame.time.get_ticks() * 0.1, 1, 1, 0)
+    #glRotatef(pygame.time.get_ticks() * 0.1, 1, 1, 0)
+    rotation_matrix = rotation_matrix_4x4(1, 'y')
+    rotation_matrix = rotation_matrix*rotation_matrix_4x4(1, 'z')
+    #rotation_matrix = rotation_matrix_4x4(1, 'x')
+    rotation_matrix = rotation_matrix * rotation_matrix_4x4(pygame.time.get_ticks() * 0.001, 'x')
+    glMultMatrixf(rotation_matrix.T) # Multiplica a matriz atual 
 
     # --- Exemplo de Aplicação de Transformações com glMultMatrix() ---
     # Para usar suas próprias matrizes de translação, rotação e escala
@@ -123,7 +129,11 @@ def draw_scene(camera_pos, is_perspective, width, height):
     # --- Aplicação da Câmera (Matriz de Visão) ---
     # Usamos os valores da posição da câmera, mas INVERTIDOS.
     # Para mover a câmera para +X, movemos o mundo para -X.
-    glTranslatef(-camera_pos[0], -camera_pos[1], -camera_pos[2])
+     
+    translation = translation_matrix_4x4(-camera_pos[0], -camera_pos[1], -camera_pos[2])
+    glMultMatrixf(translation.T) # Multiplica a matriz atual pela matriz de translação 
+
+    #glTranslatef(-camera_pos[0], -camera_pos[1], -camera_pos[2])
 
     # --- Desenho dos Objetos (Matriz de Modelo) ---
     # Todas as transformações de objetos vêm DEPOIS da câmera.
