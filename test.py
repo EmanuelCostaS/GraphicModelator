@@ -1,6 +1,8 @@
 import pygame
 from OpenGL.GL import *
 from OpenGL.GLU import *
+from camera.camera import configure_projection_matrix, Camera
+
 
 def init_opengl(width, height):
     # Configurações básicas da OpenGL
@@ -10,19 +12,12 @@ def init_opengl(width, height):
     glDepthFunc(GL_LESS) # Testa se o novo pixel está mais próximo que o anterior
     glShadeModel(GL_SMOOTH) # Habilita o sombreamento suave (Gouraud por padrão na OpenGL fixa)
 
-    # Configuração da Matriz de Projeção
-    glMatrixMode(GL_PROJECTION)
-    glLoadIdentity()
-    # Exemplo de Projeção Perspectiva
-    # fovy: ângulo do campo de visão em Y
-    # aspect: proporção largura/altura
-    # zNear: distância do plano de corte próximo
-    # zFar: distância do plano de corte distante
-    gluPerspective(45, (width / height), 0.1, 100.0)
+    configure_projection_matrix(width, height, False) # Configura a matriz de projeção
 
-    # Configuração da Matriz de Modelo/Visão
-    glMatrixMode(GL_MODELVIEW)
-    glLoadIdentity()
+
+    # 4. Aplique sua matriz. A transposição (.T) é vital para alinhar o formato
+    #    do NumPy com o formato interno do OpenGL.
+
 
     # --- Configuração de Iluminação (Modelo de Phong) ---
     glEnable(GL_LIGHTING) # Habilita o sistema de iluminação
@@ -50,9 +45,7 @@ def init_opengl(width, height):
 
 
 def draw_object():
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT) # Limpa o buffer de cor e profundidade
-    glLoadIdentity() # Reseta a matriz de modelo/visão para a identidade
-    glTranslatef(0.0, 0.0, -5.0) # Move a câmera para trás para o objeto ser visível
+    
 
     glRotatef(pygame.time.get_ticks() * 0.1, 1, 1, 0)
 
@@ -112,9 +105,35 @@ def draw_object():
     glVertex3f(-1.0, -1.0, 1.0)
     glVertex3f(-1.0, 1.0, 1.0)
     glVertex3f(-1.0, 1.0, -1.0)
-    glEnd() # Finaliza o desenho de quads
+    glEnd() # Finaliza o desenho de quads 
 
-    pygame.display.flip() # Atualiza a tela (mostra o que foi desenhado)
+
+### MODIFICADO ###
+def draw_scene(camera_pos, is_perspective, width, height):
+    """
+    Desenha os objetos na cena, aplicando a transformação da câmera primeiro.
+    """
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+    glMatrixMode(GL_MODELVIEW)
+    glLoadIdentity()
+
+    configure_projection_matrix(width, height, not is_perspective) # Configura a matriz de projeção
+
+    # --- Aplicação da Câmera (Matriz de Visão) ---
+    # Usamos os valores da posição da câmera, mas INVERTIDOS.
+    # Para mover a câmera para +X, movemos o mundo para -X.
+    glTranslatef(-camera_pos[0], -camera_pos[1], -camera_pos[2])
+
+    # --- Desenho dos Objetos (Matriz de Modelo) ---
+    # Todas as transformações de objetos vêm DEPOIS da câmera.
+
+    # Salva o estado atual da matriz (depois da transformação da câmera)
+    glPushMatrix()
+    draw_object()
+    glPopMatrix()
+
+    pygame.display.flip()   
 
 def main():
     pygame.init() # Inicializa o Pygame
@@ -124,13 +143,29 @@ def main():
 
     init_opengl(*display) # Inicializa as configurações da OpenGL
 
+   
     running = True
+
+    is_perspective = True
+    camera = Camera()
+ 
+
     while running:
+
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT: # Se o usuário clicar para fechar a janela
                 running = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_p: # Se a tecla P for pressionada
+                    is_perspective = not is_perspective # Inverte o modo
+                    print(f"Modo de projeção: {'Perspectiva' if is_perspective else 'Ortogonal'}")
+        
 
-        draw_object() # Desenha o objeto
+        camera.update() 
+
+        draw_scene(camera.camera_position, is_perspective, display[0], display[1]) ### MODIFICADO ###
+ 
         pygame.time.wait(10) # Pequena pausa para reduzir o uso da CPU
 
     pygame.quit() # Encerra o Pygame
