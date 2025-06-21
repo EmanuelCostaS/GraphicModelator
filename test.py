@@ -2,113 +2,106 @@ import pygame
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from camera.camera import configure_projection_matrix, Camera
+import math
 
 
 def init_opengl(width, height):
-    # Configurações básicas da OpenGL
-    glClearColor(0.0, 0.0, 0.0, 0.0) # Cor de fundo preta
-    glClearDepth(1.0) # Valor padrão do z-buffer
-    glEnable(GL_DEPTH_TEST) # Habilita o teste de profundidade (Z-buffer para visibilidade)
-    glDepthFunc(GL_LESS) # Testa se o novo pixel está mais próximo que o anterior
-    glShadeModel(GL_SMOOTH) # Habilita o sombreamento suave (Gouraud por padrão na OpenGL fixa)
-
-    configure_projection_matrix(width, height, False) # Configura a matriz de projeção
-
-
-    # 4. Aplique sua matriz. A transposição (.T) é vital para alinhar o formato
-    #    do NumPy com o formato interno do OpenGL.
-
+    """Configurações básicas da OpenGL"""
+    glClearColor(0.0, 0.0, 0.0, 0.0)
+    glClearDepth(1.0)
+    glEnable(GL_DEPTH_TEST)
+    glDepthFunc(GL_LESS)
+    glShadeModel(GL_SMOOTH)
+    
+    # A configuração da projeção é agora feita em draw_scene
+    # configure_projection_matrix(width, height, False) 
 
     # --- Configuração de Iluminação (Modelo de Phong) ---
-    glEnable(GL_LIGHTING) # Habilita o sistema de iluminação
-    glEnable(GL_LIGHT0) # Ativa a primeira fonte de luz (LIGHT0)
-
-    # Posição da Luz 0 (luz direcional no exemplo, w=0)
-    # Se w=0, a luz é direcional (raios paralelos). Se w=1, é pontual.
+    glEnable(GL_LIGHTING)
+    glEnable(GL_LIGHT0)
+    
     light_position = [0.0, 1.0, 1.0, 0.0]
     glLightfv(GL_LIGHT0, GL_POSITION, light_position)
-
-    # Cores da Luz 0
-    light_ambient = [0.2, 0.2, 0.2, 1.0] # Componente ambiente (luz geral)
-    light_diffuse = [0.8, 0.8, 0.8, 1.0] # Componente difusa (direção da luz)
-    light_specular = [1.0, 1.0, 1.0, 1.0] # Componente especular (brilho)
+    light_ambient = [0.2, 0.2, 0.2, 1.0]
+    light_diffuse = [0.8, 0.8, 0.8, 1.0]
+    light_specular = [1.0, 1.0, 1.0, 1.0]
     glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient)
     glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse)
     glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular)
 
     # --- Propriedades do Material do Objeto ---
-    # As cores do material interagem com as cores da luz para determinar a cor final do objeto.
-    glMaterialfv(GL_FRONT, GL_AMBIENT, [0.1, 0.1, 0.1, 1.0])
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, [0.7, 0.7, 0.7, 1.0])
+    glMaterialfv(GL_FRONT, GL_AMBIENT, [0.004, 0.408, 0.627]) # Material um pouco esverdeado
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, [0.004, 0.408, 0.627])
     glMaterialfv(GL_FRONT, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0])
-    glMaterialf(GL_FRONT, GL_SHININESS, 50.0) # Nível de brilho especular (0-128)
+    glMaterialf(GL_FRONT, GL_SHININESS, 50.0)
 
+def hexagon(radius, height, num_segments):
+    top_vertices = []
+    bottom_vertices = []
+    for i in range(num_segments):
+        # Ângulo para cada vértice
+        angle = 2 * math.pi * i / num_segments
+        # Coordenadas x e y baseadas no ângulo e raio
+        x = radius * math.cos(angle)
+        y = radius * math.sin(angle)
+        # Adiciona o vértice do topo e da base à lista
+        top_vertices.append((x, y, height / 2.0))
+        bottom_vertices.append((x, y, -height / 2.0))
+
+        # Desenha a face do topo
+    glBegin(GL_POLYGON)
+    glNormal3f(0.0, 0.0, 1.0)  # Normal aponta para cima no eixo Z
+    for vertex in top_vertices:
+        glVertex3f(*vertex) # O '*' desempacota a tupla (x,y,z) nos argumentos da função
+    glEnd()
+
+    # Desenha a face da base
+    glBegin(GL_POLYGON)
+    glNormal3f(0.0, 0.0, -1.0) # Normal aponta para baixo no eixo Z
+    # Desenha em ordem inversa para manter a face virada para fora
+    for vertex in reversed(bottom_vertices):
+        glVertex3f(*vertex)
+    glEnd()
+
+    # Desenha as faces laterais
+    glBegin(GL_QUADS)
+    for i in range(num_segments):
+        # Vértices do quad da lateral atual
+        v1_top = top_vertices[i]
+        v2_bottom = bottom_vertices[i]
+        # O operador '%' garante que o índice volte a 0 após o último vértice
+        v3_bottom = bottom_vertices[(i + 1) % num_segments]
+        v4_top = top_vertices[(i + 1) % num_segments]
+
+        # Calcula a normal para a face lateral.
+        # A normal é perpendicular à face e aponta para fora do centro.
+        # Para um hexágono regular, o ângulo da normal é o ângulo médio entre os dois vértices.
+        normal_angle = 2 * math.pi * (i + 0.5) / num_segments
+        normal_x = math.cos(normal_angle)
+        normal_y = math.sin(normal_angle)
+        glNormal3f(normal_x, normal_y, 0.0)
+
+        # Desenha o quad da lateral usando os 4 vértices
+        glVertex3f(*v1_top)
+        glVertex3f(*v2_bottom)
+        glVertex3f(*v3_bottom)
+        glVertex3f(*v4_top)
+    glEnd()
 
 def draw_object():
+    """Desenha um prisma hexagonal 3D no lugar do cubo."""
     
+    # Mantém a rotação do objeto original para melhor visualização
+    glRotatef(pygame.time.get_ticks() * 0.05, 0.5, 1, 0.2)
 
-    glRotatef(pygame.time.get_ticks() * 0.1, 1, 1, 0)
+    # --- Desenho de um Prisma Hexagonal ---
+    radius = 1.0  # Distância do centro a um vértice
+    height = 0.2  # Altura total do prisma
+    num_segments = 6 # Número de lados (hexágono)
 
-    # --- Exemplo de Aplicação de Transformações com glMultMatrix() ---
-    # Para usar suas próprias matrizes de translação, rotação e escala
-    # (25% e 20% do trabalho)
-    # Crie uma matriz 4x4 em um array NumPy ou lista de 16 elementos (float32)
-    # Exemplo de matriz de rotação em torno do eixo Y:
-    # rotation_matrix_y = [
-    #    cos_angle, 0, sin_angle, 0,
-    #    0, 1, 0, 0,
-    #    -sin_angle, 0, cos_angle, 0,
-    #    0, 0, 0, 1
-    # ]
-    # glMultMatrixf(rotation_matrix_y) # Multiplica a matriz atual pela sua matriz
-
-    # Desenha um cubo simples
-    glBegin(GL_QUADS) # Inicia o desenho de quads (faces de 4 vértices)
-    # Frente
-    glNormal3f(0.0, 0.0, 1.0) # Normal da superfície (aponta para fora) - importante para iluminação
-    glVertex3f(-1.0, -1.0, 1.0)
-    glVertex3f(1.0, -1.0, 1.0)
-    glVertex3f(1.0, 1.0, 1.0)
-    glVertex3f(-1.0, 1.0, 1.0)
-
-    # Trás
-    glNormal3f(0.0, 0.0, -1.0)
-    glVertex3f(-1.0, -1.0, -1.0)
-    glVertex3f(-1.0, 1.0, -1.0)
-    glVertex3f(1.0, 1.0, -1.0)
-    glVertex3f(1.0, -1.0, -1.0)
-
-    # Topo
-    glNormal3f(0.0, 1.0, 0.0)
-    glVertex3f(-1.0, 1.0, -1.0)
-    glVertex3f(-1.0, 1.0, 1.0)
-    glVertex3f(1.0, 1.0, 1.0)
-    glVertex3f(1.0, 1.0, -1.0)
-
-    # Base
-    glNormal3f(0.0, -1.0, 0.0)
-    glVertex3f(-1.0, -1.0, -1.0)
-    glVertex3f(1.0, -1.0, -1.0)
-    glVertex3f(1.0, -1.0, 1.0)
-    glVertex3f(-1.0, -1.0, 1.0)
-
-    # Direita
-    glNormal3f(1.0, 0.0, 0.0)
-    glVertex3f(1.0, -1.0, -1.0)
-    glVertex3f(1.0, 1.0, -1.0)
-    glVertex3f(1.0, 1.0, 1.0)
-    glVertex3f(1.0, -1.0, 1.0)
-
-    # Esquerda
-    glNormal3f(-1.0, 0.0, 0.0)
-    glVertex3f(-1.0, -1.0, -1.0)
-    glVertex3f(-1.0, -1.0, 1.0)
-    glVertex3f(-1.0, 1.0, 1.0)
-    glVertex3f(-1.0, 1.0, -1.0)
-    glEnd() # Finaliza o desenho de quads 
+    hexagon(radius, height, num_segments)
 
 
-### MODIFICADO ###
 def draw_scene(camera_pos, is_perspective, width, height):
     """
     Desenha os objetos na cena, aplicando a transformação da câmera primeiro.
