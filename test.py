@@ -37,19 +37,7 @@ def init_opengl(width, height):
     glMaterialfv(GL_FRONT, GL_SPECULAR, [0.5, 0.5, 0.5, 1.0])
     glMaterialf(GL_FRONT, GL_SHININESS, 32.0)
 
-
-### FUNÇÃO CORRIGIDA ###
-def draw_object():
-    """Desenha um prisma hexagonal 3D."""
-    
-    # Aplica uma rotação ao objeto para que ele gire na tela
-    glRotatef(pygame.time.get_ticks() * 0.05, 0.5, 1, 0.2)
-
-    # --- Parâmetros do Prisma Hexagonal ---
-    radius = 1.2  # Distância do centro a um vértice
-    height = 1.0  # Altura total do prisma
-    num_segments = 6 # Número de lados (6 para um hexágono)
-
+def hexagon(radius, height, num_segments):
     # --- Cálculo dos Vértices ---
     top_vertices = []
     bottom_vertices = []
@@ -95,8 +83,19 @@ def draw_object():
         glVertex3f(*v4_top)
     glEnd()
 
+def draw_object():
+    """Desenha um prisma hexagonal 3D."""
+    
+    # Aplica uma rotação ao objeto para que ele gire na tela
+    glRotatef(pygame.time.get_ticks() * 0.05, 0.5, 1, 0.2)
 
-### MODIFICADO E CORRIGIDO ###
+    # --- Parâmetros do Prisma Hexagonal ---
+    radius = 1.0  
+    height = 0.2 
+    num_segments = 6 
+    hexagon(radius, height, num_segments)
+
+
 def draw_scene(camera_pos, is_perspective, width, height):
     """
     Desenha os objetos na cena, aplicando a transformação da câmera primeiro.
