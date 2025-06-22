@@ -6,20 +6,21 @@ import math
 
 
 def init_opengl(width, height):
-    """Configurações básicas da OpenGL"""
-    glClearColor(0.0, 0.0, 0.0, 0.0)
-    glClearDepth(1.0)
-    glEnable(GL_DEPTH_TEST)
-    glDepthFunc(GL_LESS)
-    glShadeModel(GL_SMOOTH)
-    
-    # A configuração da projeção é agora feita em draw_scene
-    # configure_projection_matrix(width, height, False) 
+    # Configurações básicas da OpenGL
+    glClearColor(0.0, 0.0, 0.0, 0.0) # Cor de fundo preta
+    glClearDepth(1.0) # Valor padrão do z-buffer
+    glEnable(GL_DEPTH_TEST) # Habilita o teste de profundidade (Z-buffer para visibilidade)
+    glDepthFunc(GL_LESS) # Testa se o novo pixel está mais próximo que o anterior
+    glShadeModel(GL_SMOOTH) # Habilita o sombreamento suave
+
+    # A configuração da projeção será feita em draw_scene
+    # configure_projection_matrix(width, height, False)
 
     # --- Configuração de Iluminação (Modelo de Phong) ---
     glEnable(GL_LIGHTING)
     glEnable(GL_LIGHT0)
-    
+
+    # Posição da Luz 0
     light_position = [0.0, 1.0, 1.0, 0.0]
     glLightfv(GL_LIGHT0, GL_POSITION, light_position)
     light_ambient = [0.2, 0.2, 0.2, 1.0]
@@ -30,138 +31,127 @@ def init_opengl(width, height):
     glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular)
 
     # --- Propriedades do Material do Objeto ---
-    glMaterialfv(GL_FRONT, GL_AMBIENT, [0.004, 0.408, 0.627]) # Material um pouco esverdeado
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, [0.004, 0.408, 0.627])
-    glMaterialfv(GL_FRONT, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0])
-    glMaterialf(GL_FRONT, GL_SHININESS, 50.0)
+    # Define um material azul para o objeto
+    glMaterialfv(GL_FRONT, GL_AMBIENT, [0.004, 0.2, 0.3, 1.0])
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, [0.004, 0.408, 0.627, 1.0])
+    glMaterialfv(GL_FRONT, GL_SPECULAR, [0.5, 0.5, 0.5, 1.0])
+    glMaterialf(GL_FRONT, GL_SHININESS, 32.0)
 
-def hexagon(radius, height, num_segments):
+
+### FUNÇÃO CORRIGIDA ###
+def draw_object():
+    """Desenha um prisma hexagonal 3D."""
+    
+    # Aplica uma rotação ao objeto para que ele gire na tela
+    glRotatef(pygame.time.get_ticks() * 0.05, 0.5, 1, 0.2)
+
+    # --- Parâmetros do Prisma Hexagonal ---
+    radius = 1.2  # Distância do centro a um vértice
+    height = 1.0  # Altura total do prisma
+    num_segments = 6 # Número de lados (6 para um hexágono)
+
+    # --- Cálculo dos Vértices ---
     top_vertices = []
     bottom_vertices = []
     for i in range(num_segments):
-        # Ângulo para cada vértice
         angle = 2 * math.pi * i / num_segments
-        # Coordenadas x e y baseadas no ângulo e raio
         x = radius * math.cos(angle)
         y = radius * math.sin(angle)
-        # Adiciona o vértice do topo e da base à lista
         top_vertices.append((x, y, height / 2.0))
         bottom_vertices.append((x, y, -height / 2.0))
 
-        # Desenha a face do topo
+    # --- Desenho da Face do Topo ---
     glBegin(GL_POLYGON)
-    glNormal3f(0.0, 0.0, 1.0)  # Normal aponta para cima no eixo Z
+    glNormal3f(0.0, 0.0, 1.0)  # Normal aponta para cima
     for vertex in top_vertices:
-        glVertex3f(*vertex) # O '*' desempacota a tupla (x,y,z) nos argumentos da função
-    glEnd()
-
-    # Desenha a face da base
-    glBegin(GL_POLYGON)
-    glNormal3f(0.0, 0.0, -1.0) # Normal aponta para baixo no eixo Z
-    # Desenha em ordem inversa para manter a face virada para fora
-    for vertex in reversed(bottom_vertices):
         glVertex3f(*vertex)
     glEnd()
 
-    # Desenha as faces laterais
+    # --- Desenho da Face da Base ---
+    glBegin(GL_POLYGON)
+    glNormal3f(0.0, 0.0, -1.0) # Normal aponta para baixo
+    for vertex in reversed(bottom_vertices): # Ordem inversa para a face apontar para fora
+        glVertex3f(*vertex)
+    glEnd()
+
+    # --- Desenho das Faces Laterais ---
     glBegin(GL_QUADS)
     for i in range(num_segments):
-        # Vértices do quad da lateral atual
         v1_top = top_vertices[i]
         v2_bottom = bottom_vertices[i]
-        # O operador '%' garante que o índice volte a 0 após o último vértice
         v3_bottom = bottom_vertices[(i + 1) % num_segments]
         v4_top = top_vertices[(i + 1) % num_segments]
 
-        # Calcula a normal para a face lateral.
-        # A normal é perpendicular à face e aponta para fora do centro.
-        # Para um hexágono regular, o ângulo da normal é o ângulo médio entre os dois vértices.
+        # Calcula a normal para a face lateral (aponta para fora do centro)
         normal_angle = 2 * math.pi * (i + 0.5) / num_segments
         normal_x = math.cos(normal_angle)
         normal_y = math.sin(normal_angle)
         glNormal3f(normal_x, normal_y, 0.0)
 
-        # Desenha o quad da lateral usando os 4 vértices
+        # Desenha o retângulo (quad) da lateral
         glVertex3f(*v1_top)
         glVertex3f(*v2_bottom)
         glVertex3f(*v3_bottom)
         glVertex3f(*v4_top)
     glEnd()
 
-def draw_object():
-    """Desenha um prisma hexagonal 3D no lugar do cubo."""
-    
-    # Mantém a rotação do objeto original para melhor visualização
-    glRotatef(pygame.time.get_ticks() * 0.05, 0.5, 1, 0.2)
 
-    # --- Desenho de um Prisma Hexagonal ---
-    radius = 1.0  # Distância do centro a um vértice
-    height = 0.2  # Altura total do prisma
-    num_segments = 6 # Número de lados (hexágono)
-
-    hexagon(radius, height, num_segments)
-
-
+### MODIFICADO E CORRIGIDO ###
 def draw_scene(camera_pos, is_perspective, width, height):
     """
     Desenha os objetos na cena, aplicando a transformação da câmera primeiro.
     """
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
+    # Configura a matriz de projeção (perspectiva ou ortogonal)
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    configure_projection_matrix(width, height, is_perspective)
+
+    # Configura a matriz de visão/modelo
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
 
-    configure_projection_matrix(width, height, not is_perspective) # Configura a matriz de projeção
-
     # --- Aplicação da Câmera (Matriz de Visão) ---
-    # Usamos os valores da posição da câmera, mas INVERTIDOS.
-    # Para mover a câmera para +X, movemos o mundo para -X.
+    # Move o mundo na direção oposta à da câmera.
+    # Revertido para glTranslatef para garantir que o código funcione sem o arquivo transformations.py
     glTranslatef(-camera_pos[0], -camera_pos[1], -camera_pos[2])
 
     # --- Desenho dos Objetos (Matriz de Modelo) ---
-    # Todas as transformações de objetos vêm DEPOIS da câmera.
-
     # Salva o estado atual da matriz (depois da transformação da câmera)
     glPushMatrix()
     draw_object()
     glPopMatrix()
 
-    pygame.display.flip()   
+    pygame.display.flip()
 
 def main():
-    pygame.init() # Inicializa o Pygame
-    display = (800, 600) # Dimensões da janela
-    pygame.display.set_mode(display, pygame.DOUBLEBUF | pygame.OPENGL) # Cria a janela com suporte a OpenGL
-    pygame.display.set_caption("CG FURG - Ambiente OpenGL") # Título da janela
+    pygame.init()
+    display = (800, 600)
+    pygame.display.set_mode(display, pygame.DOUBLEBUF | pygame.OPENGL)
+    pygame.display.set_caption("CG FURG - Hexágono")
 
-    init_opengl(*display) # Inicializa as configurações da OpenGL
-
-   
+    init_opengl(*display)
+    
     running = True
-
     is_perspective = True
     camera = Camera()
- 
-
+    camera.camera_position[2] = 5 # Afasta a câmera para ver o objeto
+    
     while running:
-
-        
         for event in pygame.event.get():
-            if event.type == pygame.QUIT: # Se o usuário clicar para fechar a janela
+            if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_p: # Se a tecla P for pressionada
-                    is_perspective = not is_perspective # Inverte o modo
+                if event.key == pygame.K_p:
+                    is_perspective = not is_perspective
                     print(f"Modo de projeção: {'Perspectiva' if is_perspective else 'Ortogonal'}")
         
+        camera.update()
+        draw_scene(camera.camera_position, is_perspective, display[0], display[1])
+        pygame.time.wait(10)
 
-        camera.update() 
-
-        draw_scene(camera.camera_position, is_perspective, display[0], display[1]) ### MODIFICADO ###
- 
-        pygame.time.wait(10) # Pequena pausa para reduzir o uso da CPU
-
-    pygame.quit() # Encerra o Pygame
+    pygame.quit()
 
 if __name__ == "__main__":
     main()
