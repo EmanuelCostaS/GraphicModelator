@@ -7,6 +7,7 @@ Utilizamos OpenGl para .... e Pygames para ...
 ### Itens implementados do zero:
 * Projeção da camera (perspectiva/ortogonal) trocável ao pressionar a tecla P;
 * Movimento de câmera por teclado (W,S para frente e trás, A,D para esquerda e direita, e E,Q para cima e baixo);
+* Rotação de câmera por teclado (arrow-keys para mudar a rotação);
 
 
 Projeto de Computação Gráfica - FURG
