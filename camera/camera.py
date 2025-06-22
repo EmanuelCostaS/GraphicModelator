@@ -52,15 +52,25 @@ def configure_projection_matrix(width, height, is_orthogonal=False):
 
 class Camera:
 
-
     def __init__(self):
         self.camera_position = [0.0, 0.0, 5.0]
+        self.camera_rotation = [0.0, 0.0]  # [pitch, yaw]
+
         self.camera_speed = 0.1
+        self.rotation_speed = 0.01  # Velocidade de rotação da câmera
 
 
     def update(self):
         keys = pygame.key.get_pressed()
 
+        if keys[pygame.K_LEFT]:
+            self.camera_rotation[1] -= self.rotation_speed # Gira o Yaw para a esquerda
+        if keys[pygame.K_RIGHT]:
+            self.camera_rotation[1] += self.rotation_speed # Gira o Yaw para a direita
+        if keys[pygame.K_UP]:
+            self.camera_rotation[0] -= self.rotation_speed # Gira o Pitch para cima
+        if keys[pygame.K_DOWN]:
+            self.camera_rotation[0] += self.rotation_speed # Gira o Pitch para baixo
         # Frente / Trás
         if keys[pygame.K_w]:
             self.camera_position[2] -= self.camera_speed

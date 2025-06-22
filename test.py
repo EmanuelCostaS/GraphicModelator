@@ -128,7 +128,7 @@ def draw_object():
 
 
 ### MODIFICADO ###
-def draw_scene(camera_pos, is_perspective, width, height):
+def draw_scene(camera, is_perspective, width, height):
     """
     Desenha os objetos na cena, aplicando a transformação da câmera primeiro.
     """
@@ -143,6 +143,19 @@ def draw_scene(camera_pos, is_perspective, width, height):
     # Usamos os valores da posição da câmera, mas INVERTIDOS.
     # Para mover a câmera para +X, movemos o mundo para -X.
      
+    rotation_camera_x = camera.camera_rotation[0] # Rotação em torno do eixo X (pitch)
+    rotation_camera_y = camera.camera_rotation[1] # Rotação em torno do eixo Y (
+
+    rotation_camera = rotation_matrix_4x4(rotation_camera_x, 'x') * rotation_matrix_4x4(rotation_camera_y, 'y')
+
+    glMultMatrixf(rotation_camera.T) # Multiplica a matriz atual pela matriz de rotação da câmera
+
+    # Rotação para cima/baixo (Pitch). Note o sinal invertido.
+    #glRotatef(camera_rot[0], 1, 0, 0)
+    # Rotação para esquerda/direita (Yaw). Note o sinal invertido.
+    #glRotatef(camera_rot[1], 0, 1, 0)
+    
+    camera_pos = camera.camera_position 
     translation = translation_matrix_4x4(-camera_pos[0], -camera_pos[1], -camera_pos[2])
     glMultMatrixf(translation.T) # Multiplica a matriz atual pela matriz de translação 
 
@@ -171,7 +184,7 @@ def main():
 
     is_perspective = True
     camera = Camera()
- 
+    mouse_sensitivity = 0.005 # Sensibilidade do mouse para rotação da câmera
 
     while running:
 
@@ -183,11 +196,11 @@ def main():
                 if event.key == pygame.K_p: # Se a tecla P for pressionada
                     is_perspective = not is_perspective # Inverte o modo
                     print(f"Modo de projeção: {'Perspectiva' if is_perspective else 'Ortogonal'}")
-        
+            
 
         camera.update() 
 
-        draw_scene(camera.camera_position, is_perspective, display[0], display[1]) ### MODIFICADO ###
+        draw_scene(camera, is_perspective, display[0], display[1]) ### MODIFICADO ###
  
         pygame.time.wait(10) # Pequena pausa para reduzir o uso da CPU
 
