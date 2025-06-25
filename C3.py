@@ -125,7 +125,7 @@ def hexagon(radius, height, num_segments, position, color, scale_factor=1.0, cur
         glDisable(GL_LIGHTING)
         
         line_indices = [0, 2, 4]
-        z_line = height / 2.0
+        z_line = height / 2.0 + 0.05 # pra ficar um pouco acima do topo do hexágono
         
         glColor3f(*line_color)
         glPointSize(line_width) 
