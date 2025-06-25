@@ -192,28 +192,28 @@ def draw_scene(camera, is_perspective, width, height):
     # --- As chamadas de desenho com a largura da linha corrigida ---
     
     # Hexágono 1
-    hexagon(1.5, 2, 6, [0, 0, 0], (1, 1, 1), scale_factor=scale_factor, line_color=(0.3,0.3,0.3), line_width=20.0)
+    hexagon(1.5, 2, 6, [0, 0, 0], (1, 1, 1), scale_factor=scale_factor, line_color=(1,1,1), line_width=20.0)
     
     # Hexágono 2
-    hexagon(2.7, 2, 6, [0, 0, -2], (0.004, 0.404, 0.62), scale_factor=scale_factor, line_color=(0.3,0.3,0.3), line_width=20.0)
+    hexagon(2.7, 2, 6, [0, 0, -2], (0.004, 0.404, 0.62), scale_factor=scale_factor, line_color=(1,1,1), line_width=20.0)
     
     # Hexágono 3
-    hexagon(3.9, 2, 6, [0, 0, -4], (1, 1, 1), scale_factor=scale_factor, line_color=(0.3,0.3,0.3), line_width=20.0)
+    hexagon(3.9, 2, 6, [0, 0, -4], (1, 1, 1), scale_factor=scale_factor, line_color=(1,1,1), line_width=20.0)
     
     # Hexágono 4
-    hexagon(6.9, 2, 6, [0, 0, -6], (0.553, 0.557, 0.573), scale_factor=scale_factor, line_color=(0.3,0.3,0.3), line_width=20.0)
+    hexagon(6.9, 2, 6, [0, 0, -6], (0.553, 0.557, 0.573), scale_factor=scale_factor, line_color=(1,1,1), line_width=20.0)
     
     # Hexágono 5
-    hexagon(8.1, 2, 6, [0, 0, -8], (1, 1, 1), scale_factor=scale_factor, line_color=(0.3,0.3,0.3), line_width=20.0)
+    hexagon(8.1, 2, 6, [0, 0, -8], (1, 1, 1), scale_factor=scale_factor, line_color=(1,1,1), line_width=20.0)
     
     # Hexágono 6
-    hexagon(15.8, 2, 6, [0, 0, -10], (0.004, 0.404, 0.62), scale_factor=scale_factor, line_color=(0.3,0.3,0.3), line_width=20.0)
+    hexagon(15.8, 2, 6, [0, 0, -10], (0.004, 0.404, 0.62), scale_factor=scale_factor, line_color=(1,1,1), line_width=20.0)
     
     # Hexágono 7
-    hexagon(17, 2, 6, [0, 0, -12], (1, 1, 1), scale_factor=scale_factor, line_color=(0.3,0.3,0.3), line_width=20.0)
+    hexagon(17, 2, 6, [0, 0, -12], (1, 1, 1), scale_factor=scale_factor, line_color=(1,1,1), line_width=20.0)
     
     # Hexágono 8
-    hexagon(17.6, 2, 6, [0, 0, -14], (0.553, 0.557, 0.573), scale_factor=scale_factor, line_color=(0.3,0.3,0.3), line_width=20.0)
+    hexagon(17.6, 2, 6, [0, 0, -14], (0.2, 0.2, 0.2), scale_factor=scale_factor, line_color=(1,1,1), line_width=20.0)
 
     pygame.display.flip()
 
