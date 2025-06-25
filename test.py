@@ -3,24 +3,20 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from camera.camera import configure_projection_matrix, Camera
 import math
-from transformations import translation_matrix_4x4, rotation_matrix_4x4
+from transformations import translation_matrix_4x4, rotation_matrix_4x4, scaling_matrix_4x4
+import numpy as np
 
 def init_opengl(width, height):
     # Configurações básicas da OpenGL
-    glClearColor(0.0, 0.0, 0.0, 0.0) # Cor de fundo preta
-    glClearDepth(1.0) # Valor padrão do z-buffer
-    glEnable(GL_DEPTH_TEST) # Habilita o teste de profundidade (Z-buffer para visibilidade)
-    glDepthFunc(GL_LESS) # Testa se o novo pixel está mais próximo que o anterior
-    glShadeModel(GL_SMOOTH) # Habilita o sombreamento suave
-
-    # A configuração da projeção será feita em draw_scene
-    # configure_projection_matrix(width, height, False)
+    glClearColor(0.0, 0.0, 0.0, 0.0)
+    glClearDepth(1.0)
+    glEnable(GL_DEPTH_TEST)
+    glDepthFunc(GL_LESS)
+    glShadeModel(GL_SMOOTH)
 
     # --- Configuração de Iluminação (Modelo de Phong) ---
     glEnable(GL_LIGHTING)
     glEnable(GL_LIGHT0)
-
-    # Posição da Luz 0
     light_position = [0.0, 1.0, 1.0, 0.0]
     glLightfv(GL_LIGHT0, GL_POSITION, light_position)
     light_ambient = [0.2, 0.2, 0.2, 1.0]
@@ -31,116 +27,177 @@ def init_opengl(width, height):
     glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular)
 
     # --- Propriedades do Material do Objeto ---
-    # Define um material azul para o objeto
     glMaterialfv(GL_FRONT, GL_AMBIENT, [0.004, 0.2, 0.3, 1.0])
     glMaterialfv(GL_FRONT, GL_DIFFUSE, [0.004, 0.408, 0.627, 1.0])
     glMaterialfv(GL_FRONT, GL_SPECULAR, [0.5, 0.5, 0.5, 1.0])
     glMaterialf(GL_FRONT, GL_SHININESS, 32.0)
 
-def hexagon(radius, height, num_segments):
-    # --- Cálculo dos Vértices ---
+def bresenham_line(x1, y1, x2, y2):
+    """
+    Calcula os pontos de uma linha 2D usando o algoritmo de Bresenham
+    e os retorna um a um (usando yield).
+    """
+    x1, y1, x2, y2 = int(round(x1)), int(round(y1)), int(round(x2)), int(round(y2))
+    dx = abs(x2 - x1)
+    dy = abs(y2 - y1)
+    sx = 1 if x1 < x2 else -1
+    sy = 1 if y1 < y2 else -1
+    err = dx - dy
+
+    while True:
+        yield (x1, y1)
+        if x1 == x2 and y1 == y2:
+            break
+        e2 = 2 * err
+        if e2 > -dy:
+            err -= dy
+            x1 += sx
+        if e2 < dx:
+            err += dx
+            y1 += sy
+
+# VERSÃO FINAL DA FUNÇÃO HEXAGON
+def hexagon(radius, height, position, color, scale_factor=1.0, squash_factor=0.85, curve_angle_deg=60, curve_steps=15, draw_lines=True, line_color=(1,1,1), line_width=2.0):
+    
+    glPushMatrix()
+    
+    scale_mat = scaling_matrix_4x4(scale_factor, scale_factor, scale_factor)
+    glMultMatrixf(scale_mat.T)
+    translation_mat = translation_matrix_4x4(position[0], position[1], position[2])
+    glMultMatrixf(translation_mat.T)
+    
+    r, g, b = color
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [r, g, b, 1.0])
+
+    # --- LÓGICA DE VÉRTICES FINAL E CORRIGIDA (AGORA COM OS ÍNDICES CERTOS) ---
+    num_segments = 6
+    # Giro inicial de 30 graus para deixar o hexágono "em pé"
+    angle_offset = math.pi / 6
+    angles = [angle_offset + (2 * math.pi * i / num_segments) for i in range(num_segments)]
+
+    # Parâmetros de ajuste
+    squash_factor = 0.85
+    # Índices CORRETOS dos cantos a serem curvados no escudo (topo esquerdo, inferior esquerdo, ambos da direita)
+    curved_indices = {0, 2, 3, 5}
+    curve_angle_deg = 60
+
     top_vertices = []
     bottom_vertices = []
-    for i in range(num_segments):
-        angle = 2 * math.pi * i / num_segments
-        x = radius * math.cos(angle)
-        y = radius * math.sin(angle)
-        top_vertices.append((x, y, height / 2.0))
-        bottom_vertices.append((x, y, -height / 2.0))
 
-    # --- Desenho da Face do Topo ---
-    glBegin(GL_POLYGON)
-    glNormal3f(0.0, 0.0, 1.0)  # Normal aponta para cima
+    for i, angle in enumerate(angles):
+        current_radius = radius
+        # Achata os vértices de TOPO (índice 1) e BASE (índice 4)
+        if i == 1 or i == 4:
+            current_radius = radius * squash_factor
+
+        if i in curved_indices:
+            start = angle - math.radians(curve_angle_deg / 2)
+            end = angle + math.radians(curve_angle_deg / 2)
+            for t in np.linspace(start, end, curve_steps):
+                x = current_radius * math.cos(t)
+                y = current_radius * math.sin(t)
+                top_vertices.append((x, y, height / 2.0))
+                bottom_vertices.append((x, y, -height / 2.0))
+        else: # Vértices retos
+            x = current_radius * math.cos(angle)
+            y = current_radius * math.sin(angle)
+            top_vertices.append((x, y, height / 2.0))
+            bottom_vertices.append((x, y, -height / 2.0))
+
+    # --- DESENHO DAS FACES COM TRIANGLE_FAN ---
+    glBegin(GL_TRIANGLE_FAN)
+    glNormal3f(0.0, 0.0, 1.0)
+    glVertex3f(0.0, 0.0, height / 2.0)
     for vertex in top_vertices:
         glVertex3f(*vertex)
+    glVertex3f(*top_vertices[0])
     glEnd()
 
-    # --- Desenho da Face da Base ---
-    glBegin(GL_POLYGON)
-    glNormal3f(0.0, 0.0, -1.0) # Normal aponta para baixo
-    for vertex in reversed(bottom_vertices): # Ordem inversa para a face apontar para fora
+    glBegin(GL_TRIANGLE_FAN)
+    glNormal3f(0.0, 0.0, -1.0)
+    glVertex3f(0.0, 0.0, -height / 2.0)
+    for vertex in reversed(bottom_vertices):
         glVertex3f(*vertex)
+    glVertex3f(*bottom_vertices[0])
     glEnd()
-
-    # --- Desenho das Faces Laterais ---
+    
+    n = len(top_vertices)
     glBegin(GL_QUADS)
-    for i in range(num_segments):
+    for i in range(n):
         v1_top = top_vertices[i]
         v2_bottom = bottom_vertices[i]
-        v3_bottom = bottom_vertices[(i + 1) % num_segments]
-        v4_top = top_vertices[(i + 1) % num_segments]
-
-        # Calcula a normal para a face lateral (aponta para fora do centro)
-        normal_angle = 2 * math.pi * (i + 0.5) / num_segments
-        normal_x = math.cos(normal_angle)
-        normal_y = math.sin(normal_angle)
-        glNormal3f(normal_x, normal_y, 0.0)
-
-        # Desenha o retângulo (quad) da lateral
+        v3_bottom = bottom_vertices[(i + 1) % n]
+        v4_top = top_vertices[(i + 1) % n]
+        normal_angle = math.atan2(v1_top[1], v1_top[0])
+        glNormal3f(math.cos(normal_angle), math.sin(normal_angle), 0.0)
         glVertex3f(*v1_top)
         glVertex3f(*v2_bottom)
         glVertex3f(*v3_bottom)
         glVertex3f(*v4_top)
     glEnd()
 
-def draw_object():
-    """Desenha um prisma hexagonal 3D."""
-    
-    # Aplica uma rotação ao objeto para que ele gire na tela
-    glRotatef(pygame.time.get_ticks() * 0.05, 0.5, 1, 0.2)
+    # Linhas com Rasterização Bresenham
+    if draw_lines:
+        glDisable(GL_LIGHTING)
+        line_indices = [0, 2, 4]
+        # Ângulos originais (sem o offset) para as linhas ficarem no formato "Y" correto
+        original_angles = [2 * math.pi * i / num_segments for i in range(num_segments)]
+        z_line = height / 2.0
+        glColor3f(*line_color)
+        glPointSize(line_width)
+        rasterization_scale = 100.0
+        glBegin(GL_POINTS)
+        for i in line_indices:
+            x2 = radius * math.cos(original_angles[i])
+            y2 = radius * math.sin(original_angles[i])
+            x1, y1 = 0.0, 0.0
+            points = bresenham_line(x1 * rasterization_scale, y1 * rasterization_scale, x2 * rasterization_scale, y2 * rasterization_scale)
+            for px, py in points:
+                glVertex3f(px / rasterization_scale, py / rasterization_scale, z_line)
+        glEnd()
+        glEnable(GL_LIGHTING)
 
-    # --- Parâmetros do Prisma Hexagonal ---
-    radius = 1.0  
-    height = 0.2 
-    num_segments = 6 
-    hexagon(radius, height, num_segments)
+    glPopMatrix()
 
 
+# FUNÇÃO DRAW_SCENE FINAL
 def draw_scene(camera, is_perspective, width, height):
-    """
-    Desenha os objetos na cena, aplicando a transformação da câmera primeiro.
-    """
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-    # Configura a matriz de projeção (perspectiva ou ortogonal)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     configure_projection_matrix(width, height, not is_perspective)
 
-    # Configura a matriz de visão/modelo
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
 
-    # --- Aplicação da Câmera (Matriz de Visão) ---
-    # Usamos os valores da posição da câmera, mas INVERTIDOS.
-    # Para mover a câmera para +X, movemos o mundo para -X.
-     
-    rotation_camera_x = camera.camera_rotation[0] # Rotação em torno do eixo X (pitch)
-    rotation_camera_y = camera.camera_rotation[1] # Rotação em torno do eixo Y (
-
+    # --- Camera transform ---
+    rotation_camera_x = camera.camera_rotation[0]
+    rotation_camera_y = camera.camera_rotation[1]
     rotation_camera = rotation_matrix_4x4(rotation_camera_x, 'x') * rotation_matrix_4x4(rotation_camera_y, 'y')
-
-    glMultMatrixf(rotation_camera.T) # Multiplica a matriz atual pela matriz de rotação da câmera
-
-    # Rotação para cima/baixo (Pitch). Note o sinal invertido.
-    #glRotatef(camera_rot[0], 1, 0, 0)
-    # Rotação para esquerda/direita (Yaw). Note o sinal invertido.
-    #glRotatef(camera_rot[1], 0, 1, 0)
-    
-    camera_pos = camera.camera_position 
+    glMultMatrixf(rotation_camera.T)
+    camera_pos = camera.camera_position
     translation = translation_matrix_4x4(-camera_pos[0], -camera_pos[1], -camera_pos[2])
-    glMultMatrixf(translation.T) # Multiplica a matriz atual pela matriz de translação 
+    glMultMatrixf(translation.T)
 
-    #glTranslatef(-camera_pos[0], -camera_pos[1], -camera_pos[2])
-    # Move o mundo na direção oposta à da câmera.
-    # Revertido para glTranslatef para garantir que o código funcione sem o arquivo transformations.py
-    glTranslatef(-camera_pos[0], -camera_pos[1], -camera_pos[2])
+    # A ROTAÇÃO DA CENA FOI REMOVIDA DAQUI, POIS O HEXÁGONO AGORA SE ORIENTA SOZINHO
 
-    # --- Desenho dos Objetos (Matriz de Modelo) ---
-    # Salva o estado atual da matriz (depois da transformação da câmera)
-    glPushMatrix()
-    draw_object()
-    glPopMatrix()
+    # --- Fator de escala único para todos os objetos ---
+    scale_factor = 0.9 
+
+    # --- Parâmetros de ajuste para a forma do escudo ---
+    squash = 0.85 # Fator de achatamento (0.8 a 1.0)
+    curve = 60   # Ângulo da curva (45 a 75)
+
+    # --- Chamadas de desenho ---
+    hexagon(1.5, 2, [0, 0, 0], (1, 1, 1), scale_factor=scale_factor, squash_factor=squash, curve_angle_deg=curve, line_color=(0.3,0.3,0.3), line_width=20.0)
+    hexagon(2.7, 2, [0, 0, -2], (0.004, 0.404, 0.62), scale_factor=scale_factor, squash_factor=squash, curve_angle_deg=curve, line_color=(0.3,0.3,0.3), line_width=20.0)
+    hexagon(3.9, 2, [0, 0, -4], (1, 1, 1), scale_factor=scale_factor, squash_factor=squash, curve_angle_deg=curve, line_color=(0.3,0.3,0.3), line_width=20.0)
+    hexagon(6.9, 2, [0, 0, -6], (0.553, 0.557, 0.573), scale_factor=scale_factor, squash_factor=squash, curve_angle_deg=curve, line_color=(0.3,0.3,0.3), line_width=20.0)
+    hexagon(8.1, 2, [0, 0, -8], (1, 1, 1), scale_factor=scale_factor, squash_factor=squash, curve_angle_deg=curve, line_color=(0.3,0.3,0.3), line_width=20.0)
+    hexagon(15.8, 2, [0, 0, -10], (0.004, 0.404, 0.62), scale_factor=scale_factor, squash_factor=squash, curve_angle_deg=curve, line_color=(0.3,0.3,0.3), line_width=20.0)
+    hexagon(17, 2, [0, 0, -12], (1, 1, 1), scale_factor=scale_factor, squash_factor=squash, curve_angle_deg=curve, line_color=(0.3,0.3,0.3), line_width=20.0)
+    hexagon(17.6, 2, [0, 0, -14], (0.553, 0.557, 0.573), scale_factor=scale_factor, squash_factor=squash, curve_angle_deg=curve, line_color=(0.3,0.3,0.3), line_width=20.0)
 
     pygame.display.flip()
 
@@ -148,14 +205,14 @@ def main():
     pygame.init()
     display = (800, 600)
     pygame.display.set_mode(display, pygame.DOUBLEBUF | pygame.OPENGL)
-    pygame.display.set_caption("CG FURG - Hexágono")
+    pygame.display.set_caption("CG FURG - Vários Hexágonos")
 
     init_opengl(*display)
     
     running = True
     is_perspective = True
     camera = Camera()
-    camera.camera_position[2] = 5 # Afasta a câmera para ver o objeto
+    camera.camera_position[2] = 8 
     
     while running:
         for event in pygame.event.get():
@@ -167,7 +224,9 @@ def main():
                     print(f"Modo de projeção: {'Perspectiva' if is_perspective else 'Ortogonal'}")
         
         camera.update()
+        
         draw_scene(camera, is_perspective, display[0], display[1])
+        
         pygame.time.wait(10)
 
     pygame.quit()
