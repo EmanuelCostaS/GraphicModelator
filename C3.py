@@ -14,21 +14,15 @@ def init_opengl(width, height):
     glDepthFunc(GL_LESS)
     glShadeModel(GL_SMOOTH)
 
-    # --- Configuração de Iluminação (SUGESTÃO) ---
+    # --- Configuração de Iluminação ---
     glEnable(GL_LIGHTING)
-    glEnable(GL_LIGHT0)
-    light_position = [1.0, 1.0, 1.0, 0.0]
+    glEnable(GL_LIGHT0) 
+    light_position = [0.0, 1.0, 1.0, 0.0]
     glLightfv(GL_LIGHT0, GL_POSITION, light_position)
-
-    # Componente ambiente pode continuar a mesma
+ 
     light_ambient = [0.2, 0.2, 0.2, 1.0]
-
-    # DIMINUA A LUZ DIFUSA: de 0.8 para algo como 0.5 ou 0.6
-    light_diffuse = [0.5, 0.5, 0.5, 1.0]
-
-    # DIMINUA DRASTICAMENTE A LUZ ESPECULAR: de 1.0 para 0.5 ou menos
-    # O brilho deve ser um detalhe, não a cor principal.
-    light_specular = [0.4, 0.4, 0.4, 1.0]
+    light_diffuse = [0.8, 0.8, 0.8, 1.0]
+    light_specular = [1.0, 1.0, 1.0, 1.0]
 
     glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient)
     glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse)
@@ -61,123 +55,21 @@ def bresenham_line(x1, y1, x2, y2):
             err += dx
             y1 += sy
 
-# VERSÃO FINAL FINAL DA FUNÇÃO HEXAGON COM RASTERIZAÇÃO DE ALTA QUALIDADE
-def hexagon(radius, height, num_segments, position, color, scale_factor=1.0, curve_angle_deg=10, curve_steps=55, draw_lines=True, line_color=(1,1,1), line_width=2.0):
-
-    line_width = 8
-
-    glPushMatrix()
-    
-    scale_mat = scaling_matrix_4x4(scale_factor, scale_factor, scale_factor)
-    glMultMatrixf(scale_mat.T)
-    translation_mat = translation_matrix_4x4(position[0], position[1], position[2])
-    glMultMatrixf(translation_mat.T)
-    
-    # --- Desenho dos Polígonos (sem alterações aqui) ---
-    r, g, b = color
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [r, g, b, 1.0])
-
-    curved_indices = [1, 3, 5]
-    angles = [2 * math.pi * i / num_segments for i in range(num_segments)]
-
-    top_vertices = []
-    bottom_vertices = []
-    for i, angle in enumerate(angles):
-        if i in curved_indices:
-            start = angle - math.radians(curve_angle_deg/2)
-            end = angle + math.radians(curve_angle_deg/2)
-            for t in np.linspace(start, end, curve_steps):
-                x = radius * math.cos(t)
-                y = radius * math.sin(t)
-                top_vertices.append((x, y, height / 2.0))
-                
-                bottom_vertices.append((x, y, -height / 2.0))
-        else:
-            x = radius * math.cos(angle)
-            y = radius * math.sin(angle)
-            top_vertices.append((x, y, height / 2.0))
-            bottom_vertices.append((x, y, -height / 2.0))
-
-    glBegin(GL_POLYGON)
-    glNormal3f(0.0, 0.0, 1.0)
-    for vertex in top_vertices:
-        glVertex3f(*vertex)
-    glEnd()
-
-    glBegin(GL_POLYGON)
-    glNormal3f(0.0, 0.0, -1.0)
-    for vertex in reversed(bottom_vertices):
-        glVertex3f(*vertex)
-    glEnd()
-    
-    n = len(top_vertices)
-    glBegin(GL_QUADS)
-    for i in range(n):
-        v1_top = top_vertices[i]
-        v2_bottom = bottom_vertices[i]
-        v3_bottom = bottom_vertices[(i + 1) % n]
-        v4_top = top_vertices[(i + 1) % n]
-        normal_angle = math.atan2(v1_top[1], v1_top[0])
-        glNormal3f(math.cos(normal_angle), math.sin(normal_angle), 0.0)
-        glVertex3f(*v1_top)
-        glVertex3f(*v2_bottom)
-        glVertex3f(*v3_bottom)
-        glVertex3f(*v4_top)
-    glEnd()
-
-    # --- RASTERIZAÇÃO DE ALTA QUALIDADE ---
-    if draw_lines:
-        glDisable(GL_LIGHTING)
-        
-        line_indices = [0, 2, 4]
-        z_line = height / 2.0 + 0.05 # pra ficar um pouco acima do topo do hexágono
-        
-        glColor3f(*line_color)
-        glPointSize(line_width) 
-        
-        # Fator de super-resolução: aumenta a quantidade de pontos gerados
-        rasterization_scale = 80.0#100.0
-
-        glBegin(GL_POINTS)
-        for i in line_indices:
-            # Ponto final da linha
-            x2 = radius * math.cos(angles[i])
-            y2 = radius * math.sin(angles[i])
-            
-            # Ponto inicial é a origem
-            x1, y1 = 0.0, 0.0
-            
-            # Chama Bresenham com as coordenadas AUMENTADAS pela escala virtual
-            points = bresenham_line(
-                x1 * rasterization_scale, 
-                y1 * rasterization_scale, 
-                x2 * rasterization_scale, 
-                y2 * rasterization_scale
-            )
-            
-            # Itera sobre os pontos de alta resolução retornados
-            for px, py in points:
-                # Desenha o ponto, mas com as coordenadas DIMINUÍDAS de volta ao normal
-                glVertex3f(px / rasterization_scale, py / rasterization_scale, z_line)
-        glEnd()
-
-        glEnable(GL_LIGHTING)
-
-    glPopMatrix()
 
 def hexagon(radius, height, num_segments, position, color, 
                         scale_factor=1.0, 
                         curve_angle_deg=10, 
-                        bulge_factor=1.0, # NEW: Controls how much the curve 'bulges'. 1.0 = no bulge.
-                        curve_steps=55, 
+                        bulge_factor=0.9,  
+                        curve_steps=105, 
                         draw_lines=True, line_color=(1,1,1), line_width=2.0):
     """
     Draws a hexagon with specified corners 'bulged' outwards.
 
     Args:
         bulge_factor (float): Multiplier for the radius of the curved sections only.
-                              Values > 1.0 make the curve bulge outwards.
+                  e            Values > 1.0 make the curve bulge outwards.
     """
+     
     glPushMatrix()
     
     # Apply transformations
@@ -188,7 +80,14 @@ def hexagon(radius, height, num_segments, position, color,
     
     # Set material color
     r, g, b = color
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [r, g, b, 1.0])
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [r, g, b, 1])
+
+    object_color_rgba = [*color, 1.0]
+    object_color_rgba = [c/3 for c in object_color_rgba]
+
+    # 1. Define a propriedade EMISSIVA do material para a cor do objeto.
+    #    Isto faz com que o objeto pareça ter a cor 'color', independentemente da luz.
+    glMaterialfv(GL_FRONT, GL_EMISSION, object_color_rgba)
 
     # --- Vertex Generation (Original logic with added Bulge Factor) ---
     curved_indices = [1, 3, 5]
@@ -199,7 +98,7 @@ def hexagon(radius, height, num_segments, position, color,
     
     for i, angle in enumerate(angles):
         if i in curved_indices:
-            # --- This is a curved corner ---
+            # --- curved corner ---
             start = angle - math.radians(curve_angle_deg / 2)
             end = angle + math.radians(curve_angle_deg / 2)
             
@@ -212,7 +111,7 @@ def hexagon(radius, height, num_segments, position, color,
                 top_vertices.append((x, y, height / 2.0))
                 bottom_vertices.append((x, y, -height / 2.0))
         else:
-            # --- This is a sharp corner ---
+            # --- sharp corner ---
             x = radius * math.cos(angle)
             y = radius * math.sin(angle)
             top_vertices.append((x, y, height / 2.0))

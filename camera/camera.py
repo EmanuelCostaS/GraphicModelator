@@ -56,7 +56,7 @@ class Camera:
         self.camera_position = [0.0, 0.0, 5.0]
         self.camera_rotation = [0.0, 0.0]  # [pitch, yaw]
 
-        self.camera_speed = 0.1
+        self.camera_speed = 0.16
         self.rotation_speed = 0.01  # Velocidade de rotação da câmera
 
 
