@@ -14,23 +14,25 @@ def init_opengl(width, height):
     glDepthFunc(GL_LESS)
     glShadeModel(GL_SMOOTH)
 
-    # --- Configuração de Iluminação (Modelo de Phong) ---
+    # --- Configuração de Iluminação (SUGESTÃO) ---
     glEnable(GL_LIGHTING)
     glEnable(GL_LIGHT0)
-    light_position = [0.0, 1.0, 1.0, 0.0]
+    light_position = [1.0, 1.0, 1.0, 0.0]
     glLightfv(GL_LIGHT0, GL_POSITION, light_position)
+
+    # Componente ambiente pode continuar a mesma
     light_ambient = [0.2, 0.2, 0.2, 1.0]
-    light_diffuse = [0.8, 0.8, 0.8, 1.0]
-    light_specular = [1.0, 1.0, 1.0, 1.0]
+
+    # DIMINUA A LUZ DIFUSA: de 0.8 para algo como 0.5 ou 0.6
+    light_diffuse = [0.5, 0.5, 0.5, 1.0]
+
+    # DIMINUA DRASTICAMENTE A LUZ ESPECULAR: de 1.0 para 0.5 ou menos
+    # O brilho deve ser um detalhe, não a cor principal.
+    light_specular = [0.4, 0.4, 0.4, 1.0]
+
     glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient)
     glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse)
     glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular)
-
-    # --- Propriedades do Material do Objeto ---
-    glMaterialfv(GL_FRONT, GL_AMBIENT, [0.004, 0.2, 0.3, 1.0])
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, [0.004, 0.408, 0.627, 1.0])
-    glMaterialfv(GL_FRONT, GL_SPECULAR, [0.5, 0.5, 0.5, 1.0])
-    glMaterialf(GL_FRONT, GL_SHININESS, 32.0)
 
 def bresenham_line(x1, y1, x2, y2):
     """
@@ -60,7 +62,9 @@ def bresenham_line(x1, y1, x2, y2):
             y1 += sy
 
 # VERSÃO FINAL FINAL DA FUNÇÃO HEXAGON COM RASTERIZAÇÃO DE ALTA QUALIDADE
-def hexagon(radius, height, num_segments, position, color, scale_factor=1.0, curve_angle_deg=30, curve_steps=10, draw_lines=True, line_color=(1,1,1), line_width=2.0):
+def hexagon(radius, height, num_segments, position, color, scale_factor=1.0, curve_angle_deg=10, curve_steps=55, draw_lines=True, line_color=(1,1,1), line_width=2.0):
+
+    line_width = 8
 
     glPushMatrix()
     
@@ -86,6 +90,7 @@ def hexagon(radius, height, num_segments, position, color, scale_factor=1.0, cur
                 x = radius * math.cos(t)
                 y = radius * math.sin(t)
                 top_vertices.append((x, y, height / 2.0))
+                
                 bottom_vertices.append((x, y, -height / 2.0))
         else:
             x = radius * math.cos(angle)
@@ -131,7 +136,7 @@ def hexagon(radius, height, num_segments, position, color, scale_factor=1.0, cur
         glPointSize(line_width) 
         
         # Fator de super-resolução: aumenta a quantidade de pontos gerados
-        rasterization_scale = 100.0
+        rasterization_scale = 80.0#100.0
 
         glBegin(GL_POINTS)
         for i in line_indices:
@@ -160,6 +165,110 @@ def hexagon(radius, height, num_segments, position, color, scale_factor=1.0, cur
 
     glPopMatrix()
 
+def hexagon(radius, height, num_segments, position, color, 
+                        scale_factor=1.0, 
+                        curve_angle_deg=10, 
+                        bulge_factor=1.0, # NEW: Controls how much the curve 'bulges'. 1.0 = no bulge.
+                        curve_steps=55, 
+                        draw_lines=True, line_color=(1,1,1), line_width=2.0):
+    """
+    Draws a hexagon with specified corners 'bulged' outwards.
+
+    Args:
+        bulge_factor (float): Multiplier for the radius of the curved sections only.
+                              Values > 1.0 make the curve bulge outwards.
+    """
+    glPushMatrix()
+    
+    # Apply transformations
+    scale_mat = scaling_matrix_4x4(scale_factor, scale_factor, scale_factor)
+    glMultMatrixf(scale_mat.T)
+    translation_mat = translation_matrix_4x4(position[0], position[1], position[2])
+    glMultMatrixf(translation_mat.T)
+    
+    # Set material color
+    r, g, b = color
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [r, g, b, 1.0])
+
+    # --- Vertex Generation (Original logic with added Bulge Factor) ---
+    curved_indices = [1, 3, 5]
+    angles = [2 * math.pi * i / num_segments for i in range(num_segments)]
+
+    top_vertices = []
+    bottom_vertices = []
+    
+    for i, angle in enumerate(angles):
+        if i in curved_indices:
+            # --- This is a curved corner ---
+            start = angle - math.radians(curve_angle_deg / 2)
+            end = angle + math.radians(curve_angle_deg / 2)
+            
+            # Apply the bulge to the radius for this section only
+            current_radius = radius * bulge_factor
+            
+            for t in np.linspace(start, end, curve_steps):
+                x = current_radius * math.cos(t)
+                y = current_radius * math.sin(t)
+                top_vertices.append((x, y, height / 2.0))
+                bottom_vertices.append((x, y, -height / 2.0))
+        else:
+            # --- This is a sharp corner ---
+            x = radius * math.cos(angle)
+            y = radius * math.sin(angle)
+            top_vertices.append((x, y, height / 2.0))
+            bottom_vertices.append((x, y, -height / 2.0))
+
+    # --- Drawing Logic ---
+    # Draw Top Face
+    glBegin(GL_POLYGON)
+    glNormal3f(0.0, 0.0, 1.0)
+    for vertex in top_vertices:
+        glVertex3f(*vertex)
+    glEnd()
+
+    # Draw Bottom Face
+    glBegin(GL_POLYGON)
+    glNormal3f(0.0, 0.0, -1.0)
+    for vertex in reversed(bottom_vertices):
+        glVertex3f(*vertex)
+    glEnd()
+    
+    # Draw Side Faces
+    n = len(top_vertices)
+    glBegin(GL_QUADS)
+    for i in range(n):
+        v1_top = top_vertices[i]; v2_bottom = bottom_vertices[i]
+        v3_bottom = bottom_vertices[(i + 1) % n]; v4_top = top_vertices[(i + 1) % n]
+        
+        # Using the original (less accurate but functional) normal calculation
+        normal_angle = math.atan2(v1_top[1], v1_top[0])
+        glNormal3f(math.cos(normal_angle), math.sin(normal_angle), 0.0)
+        
+        glVertex3f(*v1_top); glVertex3f(*v2_bottom); glVertex3f(*v3_bottom); glVertex3f(*v4_top)
+    glEnd()
+
+    # --- RASTERIZAÇÃO ---
+    if draw_lines:
+        glDisable(GL_LIGHTING)
+        line_indices = [0, 2, 4]
+        z_line = height / 2.0 + 0.01
+        glColor3f(*line_color)
+        valid_line_width = max(1.0, line_width)
+        glPointSize(valid_line_width) 
+        
+        rasterization_scale = 80.0
+        glBegin(GL_POINTS)
+        for i in line_indices:
+            current_angle = angles[i]
+            x2 = radius * math.cos(current_angle)
+            y2 = radius * math.sin(current_angle)
+            points = bresenham_line(0, 0, x2 * rasterization_scale, y2 * rasterization_scale)
+            for px, py in points:
+                glVertex3f(px / rasterization_scale, py / rasterization_scale, z_line)
+        glEnd()
+        glEnable(GL_LIGHTING)
+
+    glPopMatrix()
 
 # FUNÇÃO DRAW_SCENE ATUALIZADA E SIMPLIFICADA
 def draw_scene(camera, is_perspective, width, height):
@@ -191,29 +300,30 @@ def draw_scene(camera, is_perspective, width, height):
 
     # --- As chamadas de desenho com a largura da linha corrigida ---
     
+
     # Hexágono 1
-    hexagon(1.5, 2, 6, [0, 0, 0], (1, 1, 1), scale_factor=scale_factor, line_color=(1,1,1), line_width=20.0)
+    hexagon(1.5, 2, 6, [0, 0, 0], (1, 1, 1), scale_factor=scale_factor, line_color=(1,1,1), line_width=5.0)
     
     # Hexágono 2
-    hexagon(2.7, 2, 6, [0, 0, -2], (0.004, 0.404, 0.62), scale_factor=scale_factor, line_color=(1,1,1), line_width=20.0)
+    hexagon(2.7, 2, 6, [0, 0, -2], (0.004, 0.404, 0.62), scale_factor=scale_factor, line_color=(1,1,1), line_width=5.0)
     
     # Hexágono 3
-    hexagon(3.9, 2, 6, [0, 0, -4], (1, 1, 1), scale_factor=scale_factor, line_color=(1,1,1), line_width=20.0)
+    hexagon(3.9, 2, 6, [0, 0, -4], (1, 1, 1), scale_factor=scale_factor, line_color=(1,1,1), line_width=5.0)
     
     # Hexágono 4
-    hexagon(6.9, 2, 6, [0, 0, -6], (0.553, 0.557, 0.573), scale_factor=scale_factor, line_color=(1,1,1), line_width=20.0)
+    hexagon(6.9, 2, 6, [0, 0, -6], (0.553, 0.557, 0.573), scale_factor=scale_factor, line_color=(1,1,1), line_width=5.0)
     
     # Hexágono 5
-    hexagon(8.1, 2, 6, [0, 0, -8], (1, 1, 1), scale_factor=scale_factor, line_color=(1,1,1), line_width=20.0)
+    hexagon(8.1, 2, 6, [0, 0, -8], (1, 1, 1), scale_factor=scale_factor, line_color=(1,1,1), line_width=5.0)
     
     # Hexágono 6
-    hexagon(15.8, 2, 6, [0, 0, -10], (0.004, 0.404, 0.62), scale_factor=scale_factor, line_color=(1,1,1), line_width=20.0)
+    hexagon(15.8, 2, 6, [0, 0, -10], (0.004, 0.404, 0.62), scale_factor=scale_factor, line_color=(1,1,1), line_width=5.0)
     
     # Hexágono 7
-    hexagon(17, 2, 6, [0, 0, -12], (1, 1, 1), scale_factor=scale_factor, line_color=(1,1,1), line_width=20.0)
+    hexagon(17, 2, 6, [0, 0, -12], (1, 1, 1), scale_factor=scale_factor, line_color=(1,1,1), line_width=0)
     
     # Hexágono 8
-    hexagon(17.6, 2, 6, [0, 0, -14], (0.2, 0.2, 0.2), scale_factor=scale_factor, line_color=(1,1,1), line_width=20.0)
+    hexagon(17.6, 2, 6, [0, 0, -14], (0.2, 0.2, 0.2), scale_factor=scale_factor, line_color=(1,1,1), line_width=0)
 
     pygame.display.flip()
 
