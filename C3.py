@@ -86,10 +86,9 @@ def hexagon(radius, height, num_segments, position, color,
     object_color_rgba = [c/3 for c in object_color_rgba]
 
     # 1. Define a propriedade EMISSIVA do material para a cor do objeto.
-    #    Isto faz com que o objeto pareça ter a cor 'color', independentemente da luz.
     glMaterialfv(GL_FRONT, GL_EMISSION, object_color_rgba)
 
-    # --- Vertex Generation (Original logic with added Bulge Factor) ---
+    # --- Vertex Generation ---
     curved_indices = [1, 3, 5]
     angles = [2 * math.pi * i / num_segments for i in range(num_segments)]
 
@@ -138,8 +137,7 @@ def hexagon(radius, height, num_segments, position, color,
     for i in range(n):
         v1_top = top_vertices[i]; v2_bottom = bottom_vertices[i]
         v3_bottom = bottom_vertices[(i + 1) % n]; v4_top = top_vertices[(i + 1) % n]
-        
-        # Using the original (less accurate but functional) normal calculation
+         
         normal_angle = math.atan2(v1_top[1], v1_top[0])
         glNormal3f(math.cos(normal_angle), math.sin(normal_angle), 0.0)
         
@@ -148,10 +146,12 @@ def hexagon(radius, height, num_segments, position, color,
 
     # --- RASTERIZAÇÃO ---
     if draw_lines:
-        glDisable(GL_LIGHTING)
+      
+        glMaterialfv(GL_FRONT, GL_EMISSION, [1.0, 1.0, 1.0, 1.0])
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, [0.0, 0.0, 0.0, 1.0])
+
         line_indices = [0, 2, 4]
         z_line = height / 2.0 + 0.01
-        glColor3f(*line_color)
         valid_line_width = max(1.0, line_width)
         glPointSize(valid_line_width) 
         
@@ -165,8 +165,7 @@ def hexagon(radius, height, num_segments, position, color,
             for px, py in points:
                 glVertex3f(px / rasterization_scale, py / rasterization_scale, z_line)
         glEnd()
-        glEnable(GL_LIGHTING)
-
+  
     glPopMatrix()
 
 # FUNÇÃO DRAW_SCENE ATUALIZADA E SIMPLIFICADA
