@@ -1,5 +1,19 @@
 # GraphicModelFURG
 
+# Como executar
+
+Tenha python3 instalado.
+Primeiramente, temos um arquivo requirements.txt, então execute:
+
+```bash
+pip install -r requirements.txt
+```
+
+Então, execute o arquivo C3.py com:
+
+```bash
+python C3.py
+```
 
 ## Como o sistema funciona
 Utilizamos OpenGl para .... e Pygames para ...
@@ -31,8 +45,12 @@ OpenGL (via PyOpenGL): Responsável por toda a renderização 3D, incluindo ilum
 Como Executar
 Instale as dependências:
 
+```bash
 pip install pygame numpy PyOpenGL PyOpenGL_accelerate
+```
 
 Execute o arquivo principal:
 
+```bash
 python nome_do_seu_arquivo.py
+```
