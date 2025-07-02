@@ -168,7 +168,6 @@ def hexagon(radius, height, num_segments, position, color,
   
     glPopMatrix()
 
-# FUNÇÃO DRAW_SCENE ATUALIZADA E SIMPLIFICADA
 def draw_scene(camera, is_perspective, width, height):
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
